@@ -1,0 +1,1 @@
+# yugioh-db-spider
