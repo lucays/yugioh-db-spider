@@ -1,85 +1,96 @@
 
 import random
-import asyncio
+from typing import Callable
 
-from requests_html import AsyncHTMLSession
-
-headers = {
-    'cookie': 'Edgescape=3; Analytics=2; CountryCd=CN; yugiohdb_cookie_card_search_mode=2; JSESSIONID=1E0FDEEE72F0A32A457DFF97E0FAB8D5; visid_incap_1363207=nmtsXj6IQrifJgapUwts3bPbs18AAAAAQUIPAAAAAABJgc4/HQrpxjHo0+CEyWID; _ga=GA1.2.1856693357.1605622812; AG=2; _gid=GA1.2.432604883.1624356860; nlbi_1363207=1wS5O8rbSysR5JNsxbLhpQAAAACYu+akurQqZKdvoX91jf2N; incap_ses_637_1363207=LGFKeWcJEE+HsFmGcRTXCFzL0WAAAAAAqIBoyek9KilLDqACbLRtCw==; incap_ses_958_1363207=De6VVui7RBBswoZ4R4BLDZjZ0WAAAAAAn9WOKhn7F5lJWWreIWCqxw==; incap_ses_1203_1363207=AlaxVui1pxQzp9MtdOqxELHe0WAAAAAAvpnxflQRPIogodurvbYG0A==; AWSALB=kUyiK7D/l31lzVjmZOb+GAmvlwO8ZmM7TS2XPbpoMLs73pLWfIbTbyQvGP/6vEfG8qzb46GaeqHzEtmAVIpPh6EgSmDw1FtOIrUXOxJCGXjSl8qYchXDOQ4awVi/; AWSALBCORS=kUyiK7D/l31lzVjmZOb+GAmvlwO8ZmM7TS2XPbpoMLs73pLWfIbTbyQvGP/6vEfG8qzb46GaeqHzEtmAVIpPh6EgSmDw1FtOIrUXOxJCGXjSl8qYchXDOQ4awVi/',
-    'referer': 'https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=1&sess=3&page=2&mode=2&stype=1&othercon=2&rp=100',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36 Edg/91.0.864.54'
-}
-
-visited_urls = set()
-# asession = AsyncHTMLSession()
+from utils.session import AsyncSession
+from configs import HEADERS
+from configs.log_config import logger
 
 
-class MyAsyncHTMLSession:
-    def __init__(self):
-        self.asession = AsyncHTMLSession()
+class CardDBSpider:
 
-    async def __aenter__(self):
-        return self.asession
+    def __init__(self) -> None:
+        self.prefix = 'https://www.db.yugioh-card.com/yugiohdb'
+        self.fail_url = []
 
-    async def __aexit__(self, exc_type, exc, traceback):
-        await self.asession.close()
+    async def get_and_render(self, asession, url: str, headers: dict, func: Callable):
+        try:
+            r = await asession.get(url, headers=headers)
+            await r.html.arender(sleep=random.randrange(1, 2))
+            return r
+        except:
+            self.fail_url.append((url, func))
+            return None
 
+    async def retry(self, asession):
+        # self.fail_url应该存redis等地方，定时轮询
+        while self.fail_url:
+            url, func = self.fail_url.pop()
+            await func(asession, url)
 
-async def get_per_page_cards_id(asession: AsyncHTMLSession, page: int, cards_id: list):
-    """获取每一页的card id list
+    async def get_cards(self):
+        async with AsyncSession() as asession:
+            start_page = 1
+            start_card_page_url = f'{self.prefix}/card_search.action?ope=1&sess=1&page={start_page}&mode=2&stype=1&othercon=2&rp=100&request_locale=ja'
+            await self.get_per_page_cards_id(asession, start_card_page_url)
 
-    Args:
-        asession (AsyncHTMLSession): AsyncHTMLSession
-        page (int): 页数
-        cards_id (list): card id list
-    """
-    card_page_url = f'https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=1&sess=1&page={page}&mode=2&stype=1&othercon=2&rp=100&request_locale=ja'
-    r = await asession.get(card_page_url, headers=headers)
-    await r.html.arender(sleep=random.randrange(1, 2))
-    count = r.html.xpath('//*[@id="article_body"]/table/tbody/tr/td/div[1]/div/strong//text()')[0]
-    print(count)
-    cards_url = r.html.xpath('//*[@id="search_result"]//input/@value')
-    current_page_cards_id = [i.split('cid=')[1] for i in cards_url]
-    if current_page_cards_id:
-        cards_id.extend(current_page_cards_id)
-        await get_per_page_cards_id(asession, page+1)
-    print(page, cards_id)
+    async def get_per_page_cards_id(self, asession, card_page_url: str):
+        page = card_page_url.split('&page=')[1].split('&')[0]
+        if HEADERS['referer']:
+            HEADERS['referer'] = f'{self.prefix}/card_search.action?ope=1&sess=3&page={page-1}&mode=2&stype=1&othercon=2&rp=100'
+        else:
+            HEADERS['referer'] = f'{self.prefix}/card_search.action?ope=1&sess=3&page=2&mode=2&stype=1&othercon=2&rp=100'
+        r = await self.get_and_render(asession, card_page_url, HEADERS)
+        if not r:
+            return
+        cards_url = r.html.xpath('//*[@id="search_result"]//input/@value')
+        for card_url in cards_url:
+            card_id = card_url.split('cid=')[1]
+            card_url = f'https://www.db.yugioh-card.com/yugiohdb/faq_search.action?ope=4&cid={card_id}&sort=2&page=1&request_locale=ja'
+            await self.get_card_info(asession, card_url)
+        if cards_url:
+            next_page_url = f'{self.prefix}/card_search.action?ope=1&sess=1&page={page+1}&mode=2&stype=1&othercon=2&rp=100&request_locale=ja'
+            await self.get_per_page_cards_id(asession, next_page_url)
 
-async def get_cards_id():
-    async with MyAsyncHTMLSession() as asession:
-        card_start_page = 1
-        cards_id = []
-        await get_per_page_cards_id(asession, card_start_page, cards_id)
-        # TODO 存储cards id
+    async def get_card_info(self, asession, card_url: str):
+        """获取卡片详情数据
 
+        Args:
+            asession :
+            card_id (str): card id
+            page (int): faq page
+        """
+        page = card_url.split('&page=')[1].split('&')[0]
+        card_id = card_url.split('cid=')[1].split('&')[0]
+        HEADERS['referer'] = f'https://www.db.yugioh-card.com/yugiohdb/faq_search.action?ope=4&cid={card_id}&request_locale=ja'
+        r = await self.get_and_render(asession, card_url, HEADERS)
+        if not r:
+            return
+        card_name = r.html.xpath('//*[@id="broad_title"]/div/h1/text()')[0].strip()
+        card_text = r.html.xpath('//*[@id="card_text"]/text()')[0].strip().replace('「\n', '「').replace('\n」', '」')
+        card_supplement = '\n'.join(r.html.xpath('//*[@id="supplement"]//text()')).strip().replace('「\n', '「').replace('\n」', '」')
+        card_supplement_date = r.html.xpath('//*[@id="update_time"]/div/span/text()')[0]
+        part_urls = r.html.xpath('//div[@class="f_left qa_title"]/input/@value')
+        print(card_id, card_name, card_supplement_date)
+        print(card_text)
+        print(card_supplement)
+        for part_url in part_urls:
+            faq_url = f'https://www.db.yugioh-card.com/{part_url}&request_locale=ja'
+            await self.get_faq_info(asession, faq_url)
+        if part_urls:
+            next_page_url = f'https://www.db.yugioh-card.com/yugiohdb/faq_search.action?ope=4&cid={card_id}&sort=2&page={page+1}&request_locale=ja'
+            await self.get_card_info(asession, next_page_url)
 
-async def get_card_info(asession: AsyncHTMLSession, card_id: str, page: int = 1):
-    """获取卡片详情数据
-
-    Args:
-        asession (AsyncHTMLSession): AsyncHTMLSession
-        card_id (str): card id
-        page (int): faq page
-    """
-    card_info_url = f'https://www.db.yugioh-card.com/yugiohdb/faq_search.action?ope=4&cid={card_id}&sort=2&page={page}&request_locale=ja'
-    headers['referer'] = f'https://www.db.yugioh-card.com/yugiohdb/faq_search.action?ope=4&cid={card_id}&request_locale=ja'
-    r = await asession.get(card_info_url, headers=headers)
-    await r.html.arender(sleep=random.randrange(1, 2))
-    card_name = r.html.xpath('//*[@id="broad_title"]/div/h1/text()')[0]
-    card_text = r.html.xpath('//*[@id="card_text"]/text()')[0]
-    card_supplement = r.html.xpath('//*[@id="supplement"]//text()')
-    card_supplement_date = r.html.xpath('//*[@id="update_time"]/div/span/text()')[0]
-    current_page_card_faq_links = [f'https://www.db.yugioh-card.com/{i}' for i in r.html.xpath('//div[@class="f_left qa_title"]/input/@value')]
-    if current_page_card_faq_links:
-        # TODO 没有必要获取所有card id或者faq link后再请求，可以考虑拿到一个就请求一个利用协程
-        # https://www.db.yugioh-card.com/yugiohdb/faq_search.action?ope=4&cid=10588&sort=2&page=2
-        pass
-
-
-async def get_cards_info(cards_id: list):
-    async with MyAsyncHTMLSession() as asession:
-        for card_id in cards_id:
-            card_info_url = f'https://www.db.yugioh-card.com/yugiohdb/faq_search.action?ope=4&cid={card_id}&request_locale=ja'
-            
-
-asyncio.run(get_cards_id())
+    async def get_faq_info(self, asession, faq_url: str):
+        faq_id = faq_url.split('fid=')[1].split('&')[0]
+        r = await self.get_and_render(asession, faq_url, HEADERS)
+        if not r:
+            return
+        title = r.html.xpath('//*[@id="broad_title"]/div/h1/text()')[0]
+        question = '\n'.join(r.html.xpath('//*[@id="question_text"]//text()')).strip().replace('「\n', '「').replace('\n」', '」')
+        answer = '\n'.join(r.html.xpath('//*[@id="answer_text"]//text()')).strip().replace('「\n', '「').replace('\n」', '」')
+        tags = r.html.xpath('//*[@id="tag_update"]/div/span[@class="f_left tag_name"]/text()')
+        date = r.html.xpath('//*[@id="tag_update"]/div/span[@class="f_right"]/text()')[0]
+        print(title)
+        print(answer)
+        print(tags, date)
