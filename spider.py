@@ -35,12 +35,12 @@ class CardDBSpider:
             await self.get_per_page_cards_id(asession, start_card_page_url)
 
     async def get_per_page_cards_id(self, asession, card_page_url: str):
-        page = card_page_url.split('&page=')[1].split('&')[0]
+        page = int(card_page_url.split('&page=')[1].split('&')[0])
         if HEADERS['referer']:
             HEADERS['referer'] = f'{self.prefix}/card_search.action?ope=1&sess=3&page={page-1}&mode=2&stype=1&othercon=2&rp=100'
         else:
             HEADERS['referer'] = f'{self.prefix}/card_search.action?ope=1&sess=3&page=2&mode=2&stype=1&othercon=2&rp=100'
-        r = await self.get_and_render(asession, card_page_url, HEADERS)
+        r = await self.get_and_render(asession, card_page_url, HEADERS, self.get_per_page_cards_id)
         if not r:
             return
         cards_url = r.html.xpath('//*[@id="search_result"]//input/@value')
@@ -60,10 +60,10 @@ class CardDBSpider:
             card_id (str): card id
             page (int): faq page
         """
-        page = card_url.split('&page=')[1].split('&')[0]
+        page = int(card_url.split('&page=')[1].split('&')[0])
         card_id = card_url.split('cid=')[1].split('&')[0]
         HEADERS['referer'] = f'https://www.db.yugioh-card.com/yugiohdb/faq_search.action?ope=4&cid={card_id}&request_locale=ja'
-        r = await self.get_and_render(asession, card_url, HEADERS)
+        r = await self.get_and_render(asession, card_url, HEADERS, self.get_card_info)
         if not r:
             return
         card_name = r.html.xpath('//*[@id="broad_title"]/div/h1/text()')[0].strip()
@@ -83,7 +83,7 @@ class CardDBSpider:
 
     async def get_faq_info(self, asession, faq_url: str):
         faq_id = faq_url.split('fid=')[1].split('&')[0]
-        r = await self.get_and_render(asession, faq_url, HEADERS)
+        r = await self.get_and_render(asession, faq_url, HEADERS, self.get_faq_info)
         if not r:
             return
         title = r.html.xpath('//*[@id="broad_title"]/div/h1/text()')[0]
