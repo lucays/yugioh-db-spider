@@ -10,7 +10,7 @@ class Faq(Base):
     __tablename__ = "faq"
 
     id = Column(Integer, primary_key=True)
-    faq_id = Column(Integer, index=True)
+    faq_id = Column(Integer, index=True, unique=True)
     title = Column(String(256))
     content = Column(String(4096*2))
     date = Column(String(32), index=True)

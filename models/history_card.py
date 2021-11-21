@@ -10,8 +10,8 @@ class Card(Base):
     __tablename__ = "card"
 
     id = Column(Integer, primary_key=True)
-    card_id = Column(Integer, index=True, unique=True)
-    name = Column(String(256), index=True, unique=True)
+    card_id = Column(Integer, index=True)
+    name = Column(String(256), index=True)
     text = Column(String(4096))
     supplement = Column(String(4096*2))
     supplement_date = Column(String(32), index=True)
