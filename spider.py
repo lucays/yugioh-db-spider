@@ -16,7 +16,7 @@ class CardDBSpider:
     async def get_and_render(self, asession, url: str, headers: dict, func: Callable):
         try:
             r = await asession.get(url, headers=headers)
-            await r.html.arender(sleep=random.randrange(1, 2))
+            await r.html.arender(sleep=random.uniform(0.3, 1.1))
             return r
         except:
             self.fail_url.append((url, func))
@@ -69,11 +69,18 @@ class CardDBSpider:
         card_name = r.html.xpath('//*[@id="broad_title"]/div/h1/text()')[0].strip()
         card_text = r.html.xpath('//*[@id="card_text"]/text()')[0].strip().replace('「\n', '「').replace('\n」', '」')
         card_supplement = '\n'.join(r.html.xpath('//*[@id="supplement"]//text()')).strip().replace('「\n', '「').replace('\n」', '」')
-        card_supplement_date = r.html.xpath('//*[@id="update_time"]/div/span/text()')[0]
+        card_supplement_date = r.html.xpath('//*[@id="card_info"]/div[@id="update_time"]/div/span/text()')[0]
         part_urls = r.html.xpath('//div[@class="f_left qa_title"]/input/@value')
+        card_pen_texts = r.html.xpath('//*[@id="pen_effect"]/text()')
         print(card_id, card_name, card_supplement_date)
-        print(card_text)
-        print(card_supplement)
+        if card_pen_texts:
+            card_pen_text = r.html.xpath('//*[@id="pen_effect"]/text()')[0].strip().replace('「\n', '「').replace('\n」', '」')
+            card_pen_supplement = '\n'.join(r.html.xpath('//*[@id="pen_supplement"]//text()')).strip().replace('「\n', '「').replace('\n」', '」')
+            card_pen_supplement_date = r.html.xpath('//*[@id="pen_info"]/div[@id="update_time"]/div/span/text()')[0]
+
+            print(card_id, card_name, card_supplement_date, card_pen_supplement_date)
+            print(card_pen_text)
+            print(card_pen_supplement)
         for part_url in part_urls:
             faq_url = f'https://www.db.yugioh-card.com/{part_url}&request_locale=ja'
             await self.get_faq_info(asession, faq_url)
