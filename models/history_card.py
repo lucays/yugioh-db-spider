@@ -3,11 +3,11 @@ from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Integer, String
 
-from dependencies import Base
+from models.dependencies import Base
 
 
-class Card(Base):
-    __tablename__ = "card"
+class HistoryCard(Base):
+    __tablename__ = "history_card"
 
     id = Column(Integer, primary_key=True)
     card_id = Column(Integer, index=True)

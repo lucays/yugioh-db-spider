@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Integer, String
 
-from dependencies import Base
+from models.dependencies import Base
 
 
 class Card(Base):
