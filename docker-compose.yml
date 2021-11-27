@@ -1,0 +1,7 @@
+version: '3'
+services:
+  spider:
+    build: .
+    volumes:
+      - ./:./
+    command: python main.py
