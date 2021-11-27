@@ -6,7 +6,6 @@ import logging.config
 standard_format = '[%(asctime)s][%(threadName)s:%(thread)d][task_id:%(name)s][%(filename)s:%(lineno)d]' \
                   '[%(levelname)s] %(message)s '  # 其中name为getlogger指定的名字
 simple_format = '[%(levelname)s][%(asctime)s][%(filename)s:%(lineno)d] %(message)s'
-id_simple_format = '[%(levelname)s][%(asctime)s] %(message)s'
 
 # 定义日志输出格式 结束
 logfile_dir = os.path.dirname(os.path.abspath(__file__)) + '/logs'  # log文件的目录
@@ -55,8 +54,14 @@ LOGGING_DIC = {
         '': {
             'handlers': ['default', 'console'],  # 这里把上面定义的两个handler都加上，即log数据既写入文件又打印到屏幕
             'level': 'WARNING',
-            'propagate': True,  # 向上（更高level的logger）传递
+            'propagate': False,  # 向上（更高level的logger）传递
         },
+        # 关闭info级别的sqlalchemy日志
+        'sqlalchemy.engine.Engine': {
+            'handlers': ['default', 'console'],
+            'level': 'WARNING',
+            'propagate': False,  # 向上（更高level的logger）传递
+        }
     },
 }
 

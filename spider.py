@@ -22,9 +22,9 @@ class CardDBSpider:
             await r.html.arender(retries=3, sleep=random.uniform(0.3, 0.6), timeout=20)
             self.success_urls.add(url)
             return r
-        except:
+        except Exception:
             self.fail_urls.add((url, func))
-            logger.error(f'request url: {url} fail, func: {func}')
+            logger.error(f'request url: {url} fail, func: {func}, error: {traceback.format_exc()}')
             return None
 
     async def retry(self, asession):
@@ -68,7 +68,7 @@ class CardDBSpider:
             next_page_url = f"{self.prefix}/card_search.action?ope=1&sess=1&page={page+1}&mode=2&stype=1&othercon=2&rp=100&request_locale=ja"
             await self.get_per_page_cards_id(asession, next_page_url)
 
-    async def get_card_info(self, asession, card_id: str):
+    async def get_card_info(self, asession, card_id: int):
         type_, attr, level, rank, link_rating, p_scale, attack, defense, src_url = (
             "モンスター",
             "",
