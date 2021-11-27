@@ -1,4 +1,7 @@
-from models.dependencies import Base, engine
+from sqlalchemy.sql.expression import select
+
+from models import Card
+from models.dependencies import Base, engine, async_session
 
 
 async def async_create_tables():
@@ -9,7 +12,18 @@ async def async_create_tables():
     await engine.dispose()
 
 
+async def check_crete_tables():
+    need_rebuild = True
+    async with async_session() as session:
+        async with session.begin():
+            cards = await session.execute(select(Card).limit(1))
+            card = cards.scalars().first()
+            if card:
+                need_rebuild = False
+    if need_rebuild:
+        await async_create_tables()
+
+
 if __name__ == '__main__':
-    from migrations.migrate import async_create_tables
     import asyncio
-    asyncio.run(async_create_tables())
+    asyncio.run(check_crete_tables())
