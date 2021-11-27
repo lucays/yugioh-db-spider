@@ -130,6 +130,8 @@ async def save_card(
 
 
 async def save_faq(cards_id, faq_id, title, question, answer, tags, date):
+    if tags and tags[0].strip() == '最新Ｑ＆Ａ':
+        tags = tags[1:]
     async with async_session() as session:
         async with session.begin():
             faqs = await session.execute(select(Faq).where(Faq.faq_id == faq_id))
@@ -160,7 +162,7 @@ async def save_faq(cards_id, faq_id, title, question, answer, tags, date):
                         title=faq.title,
                         question=faq.question,
                         answer=faq.answer,
-                        tags=faq.tags,
+                        tags=' '.join(tags),
                         date=faq.date,
                     )
                 )

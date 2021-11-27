@@ -24,7 +24,7 @@ class CardDBSpider:
             return r
         except Exception:
             self.fail_urls.add((url, func))
-            logger.error(f'request url: {url} fail, func: {func}, error: {traceback.format_exc()}')
+            logger.exception(f'request url: {url} fail, func: {func}, error: {traceback.format_exc()}')
             return None
 
     async def retry(self, asession):
@@ -52,13 +52,14 @@ class CardDBSpider:
             return None
         cards_url = r.html.xpath('//*[@id="search_result"]//input/@value')
         if cards_url:
+            logger.warning(f'card page: {page} fetched')
             for card_url in cards_url:
                 card_id = card_url.split("cid=")[1]
                 card_url = f"https://www.db.yugioh-card.com/yugiohdb/faq_search.action?ope=4&cid={card_id}&sort=2&page=1&request_locale=ja"
                 try:
                     await self.get_card_supplement_info(asession, card_url)
                 except Exception:
-                    logger.info(f'some error occured: {traceback.format_exc()}')
+                    logger.exception(f'some error occured: {traceback.format_exc()}')
         else:
             self.fail_urls.add((card_page_url, self.get_per_page_cards_id))
             next_page_url = f"{self.prefix}/card_search.action?ope=1&sess=1&page={page+1}&mode=2&stype=1&othercon=2&rp=100&request_locale=ja"
@@ -178,7 +179,7 @@ class CardDBSpider:
             try:
                 await self.get_faq_info(asession, faq_url)
             except Exception:
-                logger.info(f'some error occured: {traceback.format_exc()}')
+                logger.exception(f'some error occured: {traceback.format_exc()}')
         pages = r.html.xpath('//div[@class="page_num"]/span/a/text()')
         if pages and pages[-1] == '»':
             next_page_url = f"https://www.db.yugioh-card.com/yugiohdb/faq_search.action?ope=4&cid={card_id}&sort=2&page={page+1}&request_locale=ja"
