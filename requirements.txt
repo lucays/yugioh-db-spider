@@ -1,6 +1,7 @@
 --trusted-host mirrors.aliyun.com -i http://mirrors.aliyun.com/pypi/simple/
 requests-html==0.10.0
 urllib3==1.25.8
+pymysql==1.0.2
 asyncmy==0.2.3
 sqlalchemy[asyncio]==1.4.27
 alembic==1.7.5

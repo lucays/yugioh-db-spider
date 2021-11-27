@@ -1,7 +1,7 @@
 version: '3'
 services:
   spider:
-    build: .
+    image: yugioh-db-spider:latest
     volumes:
-      - ./:./
+      - ./configs:/configs
     command: python main.py
