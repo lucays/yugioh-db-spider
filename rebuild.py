@@ -1,5 +1,3 @@
-
-from models import Card, CardFaq, HistoryCard, HistoryFaq, Faq
 from models.dependencies import Base, engine
 
 
@@ -9,3 +7,9 @@ async def async_create_tables():
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     await engine.dispose()
+
+
+if __name__ == '__main__':
+    from migrations.migrate import async_create_tables
+    import asyncio
+    asyncio.run(async_create_tables())

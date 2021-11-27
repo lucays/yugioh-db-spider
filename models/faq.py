@@ -11,8 +11,10 @@ class Faq(Base):
 
     id = Column(Integer, primary_key=True)
     faq_id = Column(Integer, index=True, unique=True)
-    title = Column(String(256))
-    content = Column(String(4096*2))
+    title = Column(String(512))
+    question = Column(String(4096))
+    answer = Column(String(4096))
+    tags = Column(String(128))
     date = Column(String(32), index=True)
     delete_flag = Column(Integer, default=0)
     create_time = Column(DateTime, default=datetime.now)

@@ -35,17 +35,17 @@ LOGGING_DIC = {
     'handlers': {
         # 打印到终端的日志
         'console': {
-            'level': 'INFO',
+            'level': 'WARNING',
             'class': 'logging.StreamHandler',  # 打印到屏幕
             'formatter': 'simple'
         },
         # 打印到文件的日志,收集info及以上的日志
         'default': {
-            'level': 'INFO',
+            'level': 'WARNING',
             'class': 'logging.handlers.RotatingFileHandler',  # 保存到文件
             'formatter': 'standard',
             'filename': logfile_path,  # 日志文件
-            'maxBytes': 1024*1024*10,  # 日志大小 3M
+            'maxBytes': 1024*1024*10,  # 日志大小
             'backupCount': 2,
             'encoding': 'utf-8',  # 日志文件的编码
         },
@@ -54,7 +54,7 @@ LOGGING_DIC = {
         # logging.getLogger(__name__)拿到的logger配置
         '': {
             'handlers': ['default', 'console'],  # 这里把上面定义的两个handler都加上，即log数据既写入文件又打印到屏幕
-            'level': 'INFO',
+            'level': 'WARNING',
             'propagate': True,  # 向上（更高level的logger）传递
         },
     },
