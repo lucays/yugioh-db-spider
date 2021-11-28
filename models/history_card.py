@@ -22,6 +22,7 @@ class HistoryCard(Base):
     monster_types = Column(String(128))
     attack = Column(String(10))
     defense = Column(String(10))
+    src_url = Column(String(256))
     text = Column(String(1024))
     supplement = Column(String(4096))
     supplement_date = Column(String(20), index=True)

@@ -26,4 +26,4 @@ async def check_crete_tables():
 
 if __name__ == '__main__':
     import asyncio
-    asyncio.run(check_crete_tables())
+    asyncio.run(async_create_tables())
