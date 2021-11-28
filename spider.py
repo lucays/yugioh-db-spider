@@ -193,9 +193,8 @@ class CardDBSpider:
                 src_url,
                 types,
             )
-            logger.info(f"card id: {card_id}, card_name: {card_name} saved")
         except Exception:
-            logger.info(f"card id: {card_id}, card_name: {card_name} save fail: {traceback.format_exc()}")
+            logger.exception(f"card id: {card_id}, card_name: {card_name} save fail: {traceback.format_exc()}")
             self.fail_ids['card'].add(card_id)
 
         part_urls = r.html.xpath('//div[@class="f_left qa_title"]/input/@value')
@@ -258,8 +257,7 @@ class CardDBSpider:
 
         try:
             await save_faq(cards_id, faq_id, title, question, answer, tags, date)
-            logger.info(f"faq id: {faq_id}, title: {title}, cards id: {cards_id} saved")
         except Exception:
-            logger.info(f'faq id: {faq_id}, title: {title}, cards id: {cards_id} save fail: {traceback.format_exc()}')
+            logger.exception(f'faq id: {faq_id}, title: {title}, cards id: {cards_id} save fail: {traceback.format_exc()}')
             self.fail_ids['faq'].add(faq_id)
             return None

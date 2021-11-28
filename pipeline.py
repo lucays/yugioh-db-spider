@@ -1,7 +1,8 @@
 from sqlalchemy.sql.expression import select
-from models import CardFaq, Card, Faq, HistoryCard, HistoryFaq
 
+from models import CardFaq, Card, Faq, HistoryCard, HistoryFaq
 from models.dependencies import async_session
+from configs.log_config import logger
 
 
 async def save_card(
@@ -51,6 +52,7 @@ async def save_card(
                         monster_types=monster_types,
                     )
                 )
+                logger.info(f"card id: {card_id}, card_name: {card_name} saved")
             elif (
                 card.text,
                 card.supplement,
@@ -127,6 +129,7 @@ async def save_card(
                 card.defense = defense
                 card.src_url = src_url
                 card.monster_types = monster_types
+                logger.info(f"card id: {card_id}, card_name: {card_name} updated")
 
 
 async def save_faq(cards_id, faq_id, title, question, answer, tags, date):
@@ -149,6 +152,7 @@ async def save_faq(cards_id, faq_id, title, question, answer, tags, date):
                 )
                 for card_id in cards_id:
                     session.add(CardFaq(card_id=card_id, faq_id=faq_id))
+                logger.info(f"faq id: {faq_id}, title: {title}, cards id: {cards_id} saved")
             elif (faq.title, faq.question, faq.answer, faq.tags, faq.date) != (
                 title,
                 question,
@@ -181,6 +185,7 @@ async def save_faq(cards_id, faq_id, title, question, answer, tags, date):
                     old_cards_id.add(old_card_faq.card_id)
                 for card_id in cards_id - old_cards_id:
                     session.add(CardFaq(card_id=card_id, faq_id=faq_id))
+                logger.info(f"faq id: {faq_id}, title: {title}, cards id: {cards_id} updated")
 
 
 async def delete_faq(faq_id):
