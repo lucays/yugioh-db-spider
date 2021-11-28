@@ -4,7 +4,10 @@ from configs.config import PROXIES
 
 class AsyncSession:
     def __init__(self):
-        self.asession = AsyncHTMLSession(browser_args=['--no-sandbox', f'--proxy-server={PROXIES}'])
+        browser_args=['--no-sandbox']
+        if PROXIES:
+            browser_args=['--no-sandbox', f'--proxy-server={PROXIES}']
+        self.asession = AsyncHTMLSession(browser_args=browser_args)
 
     async def __aenter__(self):
         return self.asession
