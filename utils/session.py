@@ -1,9 +1,10 @@
 from requests_html import AsyncHTMLSession
+from configs.config import PROXIES
 
 
 class AsyncSession:
     def __init__(self):
-        self.asession = AsyncHTMLSession()
+        self.asession = AsyncHTMLSession(browser_args=['--no-sandbox', f'--proxy-server={PROXIES}'])
 
     async def __aenter__(self):
         return self.asession
