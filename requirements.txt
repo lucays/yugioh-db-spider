@@ -5,3 +5,4 @@ pymysql==1.0.2
 asyncmy==0.2.3
 sqlalchemy[asyncio]==1.4.27
 alembic==1.7.5
+pyyaml==6.0

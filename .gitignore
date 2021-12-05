@@ -129,7 +129,7 @@ dmypy.json
 .pyre/
 
 # config
-config.py
+config.yml
 
 alembic/
 alembic.ini
