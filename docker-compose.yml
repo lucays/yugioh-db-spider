@@ -3,5 +3,5 @@ services:
   spider:
     image: yugioh-db-spider:latest
     volumes:
-      - ./configs:/configs
+      - ./config.yml:/configs/config.yml
     command: python main.py
