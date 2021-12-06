@@ -6,7 +6,7 @@
 
 mysql, docker, docker-compose
 
-确认以上依赖都已满足，git clone本项目后，需要在configs文件夹下新建config.yml文件，内容可以参照这个路径下的example-config.yml文件，不过MYSQL_URI需要设置为你自己的mysql路径。如果有代理，可以设置PROXIES为你的代理地址；如果没有，请改为空或者删去这一行，比如这样：
+确认以上依赖都已满足，git clone本项目后，需要新建config.yml文件，把这个文件路径复制到docker-compose.yml文件内，替换掉volumes下冒号左侧的`./config.yml`部分，文件内容可以参照configs/config路径下的example-config.yml文件，MYSQL_URI需要设置为你自己的mysql路径。如果有代理，可以设置PROXIES为你的代理地址；如果没有，请改为空或者删去这一行，比如这样：
 
 ```
 PROXIES: ''
