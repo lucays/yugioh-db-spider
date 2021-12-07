@@ -1,4 +1,5 @@
 import random
+import asyncio
 import traceback
 from typing import Callable
 
@@ -37,7 +38,7 @@ class CardDBSpider:
     async def get_and_render(self, asession, url: str, headers: dict, func: Callable):
         try:
             r = await asession.get(url, headers=headers)
-            await r.html.arender(retries=3, sleep=random.uniform(0.9, 1.5), timeout=15)
+            await r.html.arender(retries=3, sleep=random.uniform(2, 3), timeout=60)
             return r
         except Exception:
             logger.exception(f'request url: {url} fail, func: {func}, error: {traceback.format_exc()}')
@@ -78,18 +79,23 @@ class CardDBSpider:
         if cards_url:
             self.success_ids['card_page'].add(page)
             logger.warning(f'card page: {page} fetched')
+            tasks = []
             for card_url in cards_url:
                 card_id = int(card_url.split("cid=")[1])
-                try:
-                    await self.get_card_supplement_info(asession, card_id)
-                except Exception:
-                    logger.exception(f'some error occured: {traceback.format_exc()}')
+                tasks.append(asyncio.create_task(self.get_card_supplement_info(asession, card_id)))
+            await self.run_tasks(tasks)
         else:
             self.fail_ids['card_page'].add(page)
             await self.get_per_page_cards_id(asession, page+1)
         pages = r.html.xpath('//div[@class="page_num"]/span/a/text()')
         if pages and pages[-1] == '»':
             await self.get_per_page_cards_id(asession, page+1)
+
+    async def run_tasks(self, tasks):
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for result_or_exc in results:
+            if isinstance(result_or_exc, Exception):
+                logger.exception(f'some error occured: {traceback.format_exc()}')
 
     async def get_card_info(self, asession, card_id: int):
         type_, attr, level, rank, link_rating, p_scale, attack, defense, src_url = (
@@ -204,12 +210,11 @@ class CardDBSpider:
         part_urls = r.html.xpath('//div[@class="f_left qa_title"]/input/@value')
         if not part_urls:
             return None
+        tasks = []
         for part_url in part_urls:
             faq_id = int(part_url.split('&fid=')[1].split('&')[0])
-            try:
-                await self.get_faq_info(asession, faq_id)
-            except Exception:
-                logger.exception(f'some error occured: {traceback.format_exc()}')
+            tasks.append(asyncio.create_task(self.get_faq_info(asession, faq_id)))
+        await self.run_tasks(tasks)
         pages = r.html.xpath('//div[@class="page_num"]/span/a/text()')
         if pages and pages[-1] == '»':
             await self.get_card_faq_page(self, asession, card_id, 2)
@@ -228,12 +233,11 @@ class CardDBSpider:
         if not part_urls:
             self.fail_ids['card_faq_page'].add((card_id, page))
             return None
+        tasks = []
         for part_url in part_urls:
             faq_id = int(part_url.split('&fid=')[1].split('&')[0])
-            try:
-                await self.get_faq_info(asession, faq_id)
-            except Exception:
-                logger.exception(f'some error occured: {traceback.format_exc()}')
+            tasks.append(asyncio.create_task(self.get_faq_info(asession, faq_id)))
+        await self.run_tasks(tasks)
         pages = r.html.xpath('//div[@class="page_num"]/span/a/text()')
         if pages and pages[-1] == '»':
             await self.get_card_faq_page(self, asession, card_id, page+1)

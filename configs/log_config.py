@@ -21,7 +21,7 @@ logfile_path = os.path.join(logfile_dir, logfile_name)
 # log配置字典
 LOGGING_DIC = {
     'version': 1,
-    'disable_existing_loggers': False,
+    'disable_existing_loggers': True,
     'formatters': {
         'standard': {
             'format': standard_format
@@ -40,7 +40,7 @@ LOGGING_DIC = {
         },
         # 打印到文件的日志,收集info及以上的日志
         'default': {
-            'level': 'WARNING',
+            'level': 'INFO',
             'class': 'logging.handlers.RotatingFileHandler',  # 保存到文件
             'formatter': 'standard',
             'filename': logfile_path,  # 日志文件
@@ -54,13 +54,7 @@ LOGGING_DIC = {
         '': {
             'handlers': ['default', 'console'],  # 这里把上面定义的两个handler都加上，即log数据既写入文件又打印到屏幕
             'level': 'INFO',
-            'propagate': False,  # 向上（更高level的logger）传递
-        },
-        # 关闭info级别的sqlalchemy日志
-        'sqlalchemy.engine.Engine': {
-            'handlers': ['default', 'console'],
-            'level': 'WARNING',
-            'propagate': False,  # 向上（更高level的logger）传递
+            'propagate': True,  # 向上（更高level的logger）传递
         }
     },
 }
