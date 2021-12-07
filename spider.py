@@ -1,3 +1,4 @@
+
 import random
 import asyncio
 import traceback
@@ -38,7 +39,7 @@ class CardDBSpider:
     async def get_and_render(self, asession, url: str, headers: dict, func: Callable):
         try:
             r = await asession.get(url, headers=headers)
-            await r.html.arender(retries=3, sleep=random.uniform(2, 3), timeout=60)
+            await r.html.arender(retries=2, sleep=random.uniform(1, 3), timeout=30)
             return r
         except Exception:
             logger.exception(f'request url: {url} fail, func: {func}, error: {traceback.format_exc()}')
@@ -49,13 +50,15 @@ class CardDBSpider:
             if values in self.success_ids[type_]:
                 self.fail_ids[type_].remove(values)
                 continue
+            tasks = []
             if type_ == 'card_faq_page':
                 for value in values:
                     card_id, page = value
-                    await self.funcs[type_](asession, card_id, page)
+                    tasks.append(self.funcs[type_](asession, card_id, page))
             else:
                 for value in values:
-                    await self.funcs[type_](asession, value)
+                    tasks.append(self.funcs[type_](asession, value))
+            await self.run_tasks(tasks)
 
     async def get_cards(self):
         async with AsyncSession() as asession:
@@ -78,7 +81,7 @@ class CardDBSpider:
         cards_url = r.html.xpath('//*[@id="search_result"]//input/@value')
         if cards_url:
             self.success_ids['card_page'].add(page)
-            logger.warning(f'card page: {page} fetched')
+            logger.info(f'start fetch card page: {page} ...')
             tasks = []
             for card_url in cards_url:
                 card_id = int(card_url.split("cid=")[1])
@@ -92,10 +95,18 @@ class CardDBSpider:
             await self.get_per_page_cards_id(asession, page+1)
 
     async def run_tasks(self, tasks):
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        for result_or_exc in results:
-            if isinstance(result_or_exc, Exception):
-                logger.exception(f'some error occured: {traceback.format_exc()}')
+        # 等分task
+        count = 2
+        sub_task_length = (len(tasks) // count) + 1
+        for i in range(count):
+            sub_tasks = tasks[i*sub_task_length: (i+1)*sub_task_length]
+            if sub_tasks:
+                done, _ = await asyncio.wait(sub_tasks)
+                for task in done:
+                    try:
+                        await task
+                    except Exception:
+                        logger.exception(f'some error occured: {traceback.format_exc()}')
 
     async def get_card_info(self, asession, card_id: int):
         type_, attr, level, rank, link_rating, p_scale, attack, defense, src_url = (
