@@ -14,4 +14,4 @@ if __name__ == "__main__":
         asyncio.run(async_create_tables())
         asyncio.run(card_spider.get_cards())
         logger.info(f"spider end. cost time: {time.time()-a}, sleep...")
-        time.sleep(3600*5)
+        time.sleep(3600 * 5)

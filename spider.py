@@ -7,7 +7,14 @@ import pyppeteer
 
 from utils.session import AsyncSession
 from configs.log_config import logger
-from pipeline import save_or_update_card, save_or_update_supplement, save_or_update_faq, delete_faq, card_exist, get_faqs_id_date
+from pipeline import (
+    save_or_update_card,
+    save_or_update_supplement,
+    save_or_update_faq,
+    delete_faq,
+    card_exist,
+    get_faqs_id_date,
+)
 
 HEADERS = {
     "referer": "",
@@ -42,7 +49,9 @@ class CardDBSpider:
             logger.exception(f"request url: {url} fail, func: {func}, error: timeout")
             return None
         except Exception:
-            logger.exception(f"request url: {url} fail, func: {func}, error: {traceback.format_exc()}")
+            logger.exception(
+                f"request url: {url} fail, func: {func}, error: {traceback.format_exc()}"
+            )
             return None
 
     async def retry(self, asession):
@@ -65,11 +74,17 @@ class CardDBSpider:
     async def get_per_page_cards_id(self, asession, page: int):
         card_page_url = f"{self.prefix}/card_search.action?ope=1&sess=1&page={page}&mode=2&stype=1&othercon=2&rp=100&request_locale=ja"
         if HEADERS["referer"]:
-            HEADERS["referer"] = f"{self.prefix}/card_search.action?ope=1&sess=3&page={page-1}&mode=2&stype=1&othercon=2&rp=100"
+            HEADERS[
+                "referer"
+            ] = f"{self.prefix}/card_search.action?ope=1&sess=3&page={page-1}&mode=2&stype=1&othercon=2&rp=100"
         else:
-            HEADERS["referer"] = f"{self.prefix}/card_search.action?ope=1&sess=3&page=2&mode=2&stype=1&othercon=2&rp=100"
+            HEADERS[
+                "referer"
+            ] = f"{self.prefix}/card_search.action?ope=1&sess=3&page=2&mode=2&stype=1&othercon=2&rp=100"
 
-        r = await self.get_and_render(asession, card_page_url, HEADERS, self.get_per_page_cards_id)
+        r = await self.get_and_render(
+            asession, card_page_url, HEADERS, self.get_per_page_cards_id
+        )
         if not r:
             self.fail_ids["card_page"].add(page)
             await self.retry(asession)
@@ -80,7 +95,11 @@ class CardDBSpider:
             tasks = []
             for card_url in cards_url:
                 card_id = int(card_url.split("cid=")[1])
-                tasks.append(asyncio.create_task(self.get_card_supplement_info(asession, card_id)))
+                tasks.append(
+                    asyncio.create_task(
+                        self.get_card_supplement_info(asession, card_id)
+                    )
+                )
             await self.run_tasks(tasks)
         else:
             self.fail_ids["card_page"].add(page)
@@ -101,12 +120,26 @@ class CardDBSpider:
                     try:
                         await task
                     except Exception:
-                        logger.exception(f"some error occured: {traceback.format_exc()}")
+                        logger.exception(
+                            f"some error occured: {traceback.format_exc()}"
+                        )
 
-    async def get_card_info(self, asession, card_id: int, card_name: str):
-        type_, attr, level, rank, link_rating, p_scale, attack, defense, src_url = ("モンスター", "", "", "", "", "", "", "", "")
+    async def get_card_info(self, asession, card_id: int):
+        type_, attr, level, rank, link_rating, p_scale, attack, defense, src_url = (
+            "モンスター",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+        )
         monster_types = []
-        HEADERS["referer"] = f"https://www.db.yugioh-card.com/yugiohdb/faq_search.action?ope=4&cid={card_id}&request_locale=ja"
+        HEADERS[
+            "referer"
+        ] = f"https://www.db.yugioh-card.com/yugiohdb/faq_search.action?ope=4&cid={card_id}&request_locale=ja"
         card_url = f"https://www.db.yugioh-card.com/yugiohdb/card_search.action?ope=2&cid={card_id}&request_locale=ja"
         r = await self.get_and_render(asession, card_url, HEADERS, self.get_card_info)
         if not r:
@@ -116,7 +149,14 @@ class CardDBSpider:
         if not src_urls:
             return None
         src_url = src_urls[0]
-        info = ["／".join(x.strip() for x in i.split("／")).strip() for i in r.html.xpath('//*[@id="details"]/tbody/tr/td/div//text()') if i.strip()]
+        card_name = [
+            i.strip() for i in r.html.xpath('//*[@id="broad_title"]/div/h1/text()')
+        ][0]
+        info = [
+            "／".join(x.strip() for x in i.split("／")).strip()
+            for i in r.html.xpath('//*[@id="details"]/tbody/tr/td/div//text()')
+            if i.strip()
+        ]
 
         for key, value in zip(info[::2], info[1::2]):
             if key == "効果":
@@ -137,13 +177,30 @@ class CardDBSpider:
                 attack = value
             if key == "守備力":
                 defense = value
-        await save_or_update_card(card_id, card_name, type_, attr, level, rank, link_rating, p_scale, attack, defense, src_url, "／".join(monster_types))
+        await save_or_update_card(
+            card_id,
+            card_name,
+            type_,
+            attr,
+            level,
+            rank,
+            link_rating,
+            p_scale,
+            attack,
+            defense,
+            src_url,
+            "／".join(monster_types),
+        )
 
     async def get_card_supplement_info(self, asession, card_id: int):
         card_url = f"{self.prefix}/faq_search.action?ope=4&cid={card_id}&rp=100&request_locale=ja"
-        HEADERS["referer"] = f"{self.prefix}/faq_search.action?ope=4&cid={card_id}&request_locale=ja"
+        HEADERS[
+            "referer"
+        ] = f"{self.prefix}/faq_search.action?ope=4&cid={card_id}&request_locale=ja"
 
-        r = await self.get_and_render(asession, card_url, HEADERS, self.get_card_supplement_info)
+        r = await self.get_and_render(
+            asession, card_url, HEADERS, self.get_card_supplement_info
+        )
         if not r:
             self.fail_ids["supplement"].add(card_id)
             await self.retry(asession)
@@ -155,23 +212,54 @@ class CardDBSpider:
             return None
         card_name = r.html.xpath('//*[@id="broad_title"]/div/h1/text()')[0].strip()
         card_text = card_texts[0].strip().replace("「\n", "「").replace("\n」", "」")
-        card_supplement = "\n".join(r.html.xpath('//*[@id="supplement"]//text()')).strip().replace("「\n", "「").replace("\n」", "」")
-        card_supplement_date = r.html.xpath('//*[@id="card_info"]/div[@id="update_time"]/div/span/text()')[0]
+        card_supplement = (
+            "\n".join(r.html.xpath('//*[@id="supplement"]//text()'))
+            .strip()
+            .replace("「\n", "「")
+            .replace("\n」", "」")
+        )
+        card_supplement_date = r.html.xpath(
+            '//*[@id="card_info"]/div[@id="update_time"]/div/span/text()'
+        )[0]
         p_texts = r.html.xpath('//*[@id="pen_effect"]/text()')
         p_effect, p_supplement, p_supplement_date = "", "", ""
         if p_texts:
-            p_effect = r.html.xpath('//*[@id="pen_effect"]/text()')[0].strip().replace("「\n", "「").replace("\n」", "」")
-            p_supplement = "\n".join(r.html.xpath('//*[@id="pen_supplement"]//text()')).strip().replace("「\n", "「").replace("\n」", "」")
-            p_supplement_date = r.html.xpath('//*[@id="pen_info"]/div[@id="update_time"]/div/span/text()')[0]
+            p_effect = (
+                r.html.xpath('//*[@id="pen_effect"]/text()')[0]
+                .strip()
+                .replace("「\n", "「")
+                .replace("\n」", "」")
+            )
+            p_supplement = (
+                "\n".join(r.html.xpath('//*[@id="pen_supplement"]//text()'))
+                .strip()
+                .replace("「\n", "「")
+                .replace("\n」", "」")
+            )
+            p_supplement_date = r.html.xpath(
+                '//*[@id="pen_info"]/div[@id="update_time"]/div/span/text()'
+            )[0]
 
         saved, updated = await save_or_update_supplement(
-            card_id, card_name, card_text, card_supplement, card_supplement_date, p_effect, p_supplement, p_supplement_date
+            card_id,
+            card_name,
+            card_text,
+            card_supplement,
+            card_supplement_date,
+            p_effect,
+            p_supplement,
+            p_supplement_date,
         )
         if saved or updated or not await card_exist(card_id):
-            await self.get_card_info(asession, card_id, card_name)
+            await self.get_card_info(asession, card_id)
 
         part_urls = r.html.xpath('//div[@class="f_left qa_title"]/input/@value')
-        dates = r.html.xpath('//div[@class="list_style"]/ul/li/table/tbody/tr[1]/td/div[2]//text()')
+        dates = [
+            i.strip()
+            for i in r.html.xpath(
+                '//div[@class="list_style"]/ul/li/table/tbody/tr[1]/td/div[2]//text()'
+            )
+        ]
         if not part_urls:
             return None
         faqs_id_date = await get_faqs_id_date(card_id)
@@ -189,15 +277,24 @@ class CardDBSpider:
 
     async def get_card_faq_page(self, asession, card_id: int, page: int, faqs_id_date):
         card_faq_url = f"{self.prefix}/faq_search.action?ope=4&cid={card_id}&rp=100&sort=2&page={page}&request_locale=ja"
-        HEADERS["referer"] = f"{self.prefix}/faq_search.action?ope=4&cid={card_id}&request_locale=ja"
+        HEADERS[
+            "referer"
+        ] = f"{self.prefix}/faq_search.action?ope=4&cid={card_id}&request_locale=ja"
 
-        r = await self.get_and_render(asession, card_faq_url, HEADERS, self.get_card_faq_page)
+        r = await self.get_and_render(
+            asession, card_faq_url, HEADERS, self.get_card_faq_page
+        )
         if not r:
             self.fail_ids["card_faq_page"].add((card_id, page))
             await self.retry(asession)
             return None
         part_urls = r.html.xpath('//div[@class="f_left qa_title"]/input/@value')
-        dates = r.html.xpath('//div[@class="list_style"]/ul/li/table/tbody/tr[1]/td/div[2]//text()')
+        dates = [
+            i.strip()
+            for i in r.html.xpath(
+                '//div[@class="list_style"]/ul/li/table/tbody/tr[1]/td/div[2]//text()'
+            )
+        ]
         if not part_urls:
             self.fail_ids["card_faq_page"].add((card_id, page))
             return None
@@ -228,14 +325,36 @@ class CardDBSpider:
             self.fail_ids["faq"].add(faq_id)
             return None
         title = r.html.xpath('//*[@id="broad_title"]/div/h1/text()')[0]
-        question = "\n".join(r.html.xpath('//*[@id="question_text"]//text()')).strip().replace("「\n", "「").replace("\n」", "」")
-        answer = "\n".join(r.html.xpath('//*[@id="answer_text"]//text()')).strip().replace("「\n", "「").replace("\n」", "」")
-        tags = r.html.xpath('//*[@id="tag_update"]/div/span[@class="f_left tag_name"]/text()')
-        date = r.html.xpath('//*[@id="tag_update"]/div/span[@class="f_right"]/text()')[0]
+        question = (
+            "\n".join(r.html.xpath('//*[@id="question_text"]//text()'))
+            .strip()
+            .replace("「\n", "「")
+            .replace("\n」", "」")
+        )
+        answer = (
+            "\n".join(r.html.xpath('//*[@id="answer_text"]//text()'))
+            .strip()
+            .replace("「\n", "「")
+            .replace("\n」", "」")
+        )
+        tags = r.html.xpath(
+            '//*[@id="tag_update"]/div/span[@class="f_left tag_name"]/text()'
+        )
+        date = r.html.xpath('//*[@id="tag_update"]/div/span[@class="f_right"]/text()')[
+            0
+        ]
         card_urls = r.html.xpath('//*[@id="question_text"]/a/@href')
-        cards_id = set(int(card_url.split("cid=")[1]) for card_url in card_urls if "cid=" in card_url)
+        cards_id = set(
+            int(card_url.split("cid=")[1])
+            for card_url in card_urls
+            if "cid=" in card_url
+        )
 
         try:
-            await save_or_update_faq(cards_id, faq_id, title, question, answer, tags, date)
+            await save_or_update_faq(
+                cards_id, faq_id, title, question, answer, tags, date
+            )
         except Exception:
-            logger.exception(f"faq id: {faq_id}, title: {title}, cards id: {cards_id} save fail: {traceback.format_exc()}")
+            logger.exception(
+                f"faq id: {faq_id}, title: {title}, cards id: {cards_id} save fail: {traceback.format_exc()}"
+            )

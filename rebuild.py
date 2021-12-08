@@ -1,4 +1,3 @@
-
 from models.dependencies import Base, engine
 
 
@@ -15,6 +14,7 @@ async def rebuild_tables():
         await conn.run_sync(Base.metadata.create_all)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import asyncio
+
     asyncio.run(async_create_tables())
