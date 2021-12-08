@@ -33,9 +33,7 @@ async def save_or_update_faq(cards_id, faq_id, title, question, answer, tags, da
                 )
                 for card_id in cards_id:
                     session.add(CardFaq(card_id=card_id, faq_id=faq_id))
-                logger.info(
-                    f"faq id: {faq_id}, title: {title}, cards id: {cards_id} saved"
-                )
+                logger.info(f"faq id: {faq_id}, title: {title}, cards id: {cards_id} saved")
             elif (faq.title, faq.question, faq.answer, faq.tags, faq.date) != (
                 title,
                 question,
@@ -60,9 +58,7 @@ async def save_or_update_faq(cards_id, faq_id, title, question, answer, tags, da
                 faq.tags = tags
                 faq.date = date
 
-                old_cards_faq = await session.execute(
-                    select(CardFaq).where(CardFaq.faq_id == faq_id)
-                )
+                old_cards_faq = await session.execute(select(CardFaq).where(CardFaq.faq_id == faq_id))
                 old_cards_id = set()
                 for old_card_faq in old_cards_faq.scalars():
                     if old_card_faq.card_id not in cards_id:
@@ -70,9 +66,7 @@ async def save_or_update_faq(cards_id, faq_id, title, question, answer, tags, da
                     old_cards_id.add(old_card_faq.card_id)
                 for card_id in cards_id - old_cards_id:
                     session.add(CardFaq(card_id=card_id, faq_id=faq_id))
-                logger.info(
-                    f"faq id: {faq_id}, title: {title}, cards id: {cards_id} updated"
-                )
+                logger.info(f"faq id: {faq_id}, title: {title}, cards id: {cards_id} updated")
 
 
 async def delete_faq(faq_id):
@@ -83,9 +77,7 @@ async def delete_faq(faq_id):
             if faq is None:
                 return
             faq.delete_flag = 1
-            card_faqs = await session.execute(
-                select(CardFaq).where(CardFaq.faq_id == faq_id)
-            )
+            card_faqs = await session.execute(select(CardFaq).where(CardFaq.faq_id == faq_id))
             for card_faq in card_faqs.scalars():
                 card_faq.delete_flag = 1
 
@@ -103,18 +95,10 @@ async def card_exist(card_id: int):
 async def get_faqs_id_date(card_id: int):
     async with async_session() as session:
         async with session.begin():
-            query = await session.execute(
-                select(CardFaq).where(CardFaq.card_id == card_id)
-            )
-            faqs_id = [
-                card_faq.faq_id
-                for card_faq in query.scalars()
-                if not card_faq.delete_flag
-            ]
+            query = await session.execute(select(CardFaq).where(CardFaq.card_id == card_id))
+            faqs_id = [card_faq.faq_id for card_faq in query.scalars() if not card_faq.delete_flag]
             query = await session.execute(select(Faq).where(Faq.id.in_(faqs_id)))
-            faqs_id_date = {
-                (faq.id, faq.date) for faq in query.scalars() if not faq.delete_flag
-            }
+            faqs_id_date = {(faq.id, faq.date) for faq in query.scalars() if not faq.delete_flag}
     return faqs_id_date
 
 
@@ -228,9 +212,7 @@ async def save_or_update_supplement(
     saved, updated = False, False
     async with async_session() as session:
         async with session.begin():
-            cards = await session.execute(
-                select(Supplement).where(Supplement.card_id == card_id)
-            )
+            cards = await session.execute(select(Supplement).where(Supplement.card_id == card_id))
             card = cards.scalar()
             if card is None:
                 session.add(
@@ -246,17 +228,8 @@ async def save_or_update_supplement(
                     )
                 )
                 saved = True
-                logger.info(
-                    f"card id: {card_id}, card_name: {card_name} supplement saved"
-                )
-            elif (
-                card.effect,
-                card.supplement,
-                card.supplement_date,
-                card.p_effect,
-                card.p_supplement,
-                card.p_supplement_date,
-            ) != (
+                logger.info(f"card id: {card_id}, card_name: {card_name} supplement saved")
+            elif (card.effect, card.supplement, card.supplement_date, card.p_effect, card.p_supplement, card.p_supplement_date,) != (
                 card_effect,
                 card_supplement,
                 card_supplement_date,
@@ -286,7 +259,5 @@ async def save_or_update_supplement(
                 card.p_supplement = p_supplement
                 card.p_supplement_date = p_supplement_date
                 updated = True
-                logger.info(
-                    f"card id: {card_id}, card_name: {card_name} supplement updated"
-                )
+                logger.info(f"card id: {card_id}, card_name: {card_name} supplement updated")
     return saved, updated

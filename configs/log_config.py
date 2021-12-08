@@ -2,10 +2,7 @@ import os
 import logging.config
 
 # 配置log
-standard_format = (
-    "[%(asctime)s][%(threadName)s:%(thread)d][task_id:%(name)s][%(filename)s:%(lineno)d]"
-    "[%(levelname)s] %(message)s "
-)  # 其中name为getlogger指定的名字
+standard_format = "[%(asctime)s][%(threadName)s:%(thread)d][task_id:%(name)s][%(filename)s:%(lineno)d]" "[%(levelname)s] %(message)s "  # 其中name为getlogger指定的名字
 simple_format = "[%(levelname)s][%(asctime)s][%(filename)s:%(lineno)d] %(message)s"
 
 # 定义日志输出格式 结束
