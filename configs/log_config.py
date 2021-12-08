@@ -40,11 +40,11 @@ LOGGING_DIC = {
         },
         # 打印到文件的日志,收集info及以上的日志
         'default': {
-            'level': 'INFO',
+            'level': 'WARNING',
             'class': 'logging.handlers.RotatingFileHandler',  # 保存到文件
             'formatter': 'standard',
             'filename': logfile_path,  # 日志文件
-            'maxBytes': 1024*1024*50,  # 日志大小
+            'maxBytes': 1024*1024*20,  # 日志大小
             'backupCount': 2,
             'encoding': 'utf-8',  # 日志文件的编码
         },

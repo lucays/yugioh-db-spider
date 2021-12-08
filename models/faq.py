@@ -16,6 +16,7 @@ class Faq(Base):
     answer = Column(String(4096))
     tags = Column(String(128))
     date = Column(String(32), index=True)
+    count = Column(Integer, default=0)
     delete_flag = Column(Integer, default=0)
     create_time = Column(DateTime, default=datetime.now)
     update_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)

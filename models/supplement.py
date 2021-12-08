@@ -17,6 +17,7 @@ class Supplement(Base):
     p_effect = Column(String(1024))
     p_supplement = Column(String(4096))
     p_supplement_date = Column(String(20), index=True)
+    count = Column(Integer, default=0)
     create_time = Column(DateTime, default=datetime.now)
     update_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

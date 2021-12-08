@@ -5,8 +5,8 @@ from sqlalchemy import Column, DateTime, Integer, String
 from models.dependencies import Base
 
 
-class Supplement(Base):
-    __tablename__ = "supplement"
+class HistorySupplement(Base):
+    __tablename__ = "history_supplement"
 
     id = Column(Integer, primary_key=True)
     card_id = Column(Integer, index=True)

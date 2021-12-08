@@ -22,6 +22,7 @@ class Card(Base):
     attack = Column(String(10))
     defense = Column(String(10))
     src_url = Column(String(256))
+    count = Column(Integer, default=0)
     create_time = Column(DateTime, default=datetime.now)
     update_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
