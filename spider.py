@@ -98,7 +98,7 @@ class CardDBSpider:
 
     async def run_tasks(self, tasks):
         # 等分task
-        count = 15
+        count = 19
         sub_task_length = (len(tasks) // count) + 1
         for i in range(count):
             sub_tasks = tasks[i * sub_task_length : (i + 1) * sub_task_length]
