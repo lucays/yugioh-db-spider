@@ -66,7 +66,7 @@ class CardDBSpider:
 
     async def get_cards(self):
         async with AsyncSession() as asession:
-            start_page = 1
+            start_page = 31
             await self.get_per_page_cards_id(asession, start_page)
 
     async def get_per_page_cards_id(self, asession, page: int):
@@ -84,11 +84,7 @@ class CardDBSpider:
         cards_url = r.html.xpath('//*[@id="search_result"]//input/@value')
         if cards_url:
             logger.info(f"start fetch card page: {page} ...")
-            tasks = []
-            for card_url in cards_url:
-                card_id = int(card_url.split("cid=")[1])
-                tasks.append(asyncio.create_task(self.get_card_supplement_info(asession, card_id)))
-            await self.run_tasks(tasks)
+            await self.crawl_cards(asession, cards_url)
         else:
             self.fail_ids["card_page"].add(page)
             await self.get_per_page_cards_id(asession, page + 1)
@@ -155,7 +151,7 @@ class CardDBSpider:
                 attack = value
             if key == "守備力":
                 defense = value
-        await save_or_update_card(
+        self.cards_info.append((
             card_id,
             card_name,
             type_,
@@ -167,8 +163,8 @@ class CardDBSpider:
             attack,
             defense,
             src_url,
-            "／".join(monster_types),
-        )
+            "／".join(monster_types)
+        ))
 
     async def get_card_supplement_info(self, asession, card_id: int):
         card_url = f"{self.prefix}/faq_search.action?ope=4&cid={card_id}&rp=100&request_locale=ja"
@@ -195,24 +191,39 @@ class CardDBSpider:
             p_supplement = "\n".join(r.html.xpath('//*[@id="pen_supplement"]//text()')).strip().replace("「\n", "「").replace("\n」", "」")
             p_supplement_date = r.html.xpath('//*[@id="pen_info"]/div[@id="update_time"]/div/span/text()')[0]
 
-        saved, updated = await save_or_update_supplement(
-            card_id,
-            card_name,
-            card_text,
-            card_supplement,
-            card_supplement_date,
-            p_effect,
-            p_supplement,
-            p_supplement_date,
-        )
-        if saved or updated or not await card_exist(card_id):
-            await self.get_card_info(asession, card_id)
+        self.cards_supplement.append((card_id, card_name, card_text, card_supplement, card_supplement_date, p_effect, p_supplement, p_supplement_date))
 
-        part_urls = r.html.xpath('//div[@class="f_left qa_title"]/input/@value')
-        dates = [i.strip() for i in r.html.xpath('//div[@class="list_style"]/ul/li/table/tbody/tr[1]/td/div[2]//text()')]
-        if not part_urls:
-            return None
-        faqs_id_date = await get_faqs_id_date(card_id)
+        # part_urls = r.html.xpath('//div[@class="f_left qa_title"]/input/@value')
+        # dates = [i.strip() for i in r.html.xpath('//div[@class="list_style"]/ul/li/table/tbody/tr[1]/td/div[2]//text()')]
+        # if not part_urls:
+        #     return None
+        # faqs_id_date = await get_faqs_id_date(card_id)
+        # await self.crawl_faqs(asession, part_urls, dates, faqs_id_date)
+        # pages = r.html.xpath('//div[@class="page_num"]/span/a/text()')
+        # if pages and pages[-1] == "»":
+        #     await self.get_card_faq_page(asession, card_id, 2, faqs_id_date)
+
+    async def crawl_cards(self, asession, cards_url):
+        self.cards_supplement = []
+        tasks = []
+        for card_url in cards_url:
+            card_id = int(card_url.split("cid=")[1])
+            tasks.append(asyncio.create_task(self.get_card_supplement_info(asession, card_id)))
+        await self.run_tasks(tasks)
+        results = await save_or_update_supplement(self.cards_supplement)
+        cards_id = []
+        for card_id, values in results.items():
+            saved, updated = values
+            if saved or updated:
+                cards_id.append(card_id)
+        need_crawl_cards_id = await card_exist(cards_id)
+        self.cards_info = []
+        tasks = [asyncio.create_task(self.get_card_info(asession, card_id)) for card_id in need_crawl_cards_id]
+        await self.run_tasks(tasks)
+        await save_or_update_card(self.cards_info)
+
+    async def crawl_faqs(self, asession, part_urls, dates, faqs_id_date):
+        self.faq_datas = []
         tasks = []
         for part_url, date in zip(part_urls, dates):
             faq_id = int(part_url.split("&fid=")[1].split("&")[0])
@@ -221,9 +232,7 @@ class CardDBSpider:
                 continue
             tasks.append(asyncio.create_task(self.get_faq_info(asession, faq_id)))
         await self.run_tasks(tasks)
-        pages = r.html.xpath('//div[@class="page_num"]/span/a/text()')
-        if pages and pages[-1] == "»":
-            await self.get_card_faq_page(asession, card_id, 2, faqs_id_date)
+        await save_or_update_faq(self.faq_datas)
 
     async def get_card_faq_page(self, asession, card_id: int, page: int, faqs_id_date):
         card_faq_url = f"{self.prefix}/faq_search.action?ope=4&cid={card_id}&rp=100&sort=2&page={page}&request_locale=ja"
@@ -239,14 +248,7 @@ class CardDBSpider:
         if not part_urls:
             self.fail_ids["card_faq_page"].add((card_id, page))
             return None
-        tasks = []
-        for part_url, date in zip(part_urls, dates):
-            faq_id = int(part_url.split("&fid=")[1].split("&")[0])
-            if (faq_id, date) in faqs_id_date:
-                faqs_id_date.remove((faq_id, date))
-                continue
-            tasks.append(asyncio.create_task(self.get_faq_info(asession, faq_id)))
-        await self.run_tasks(tasks)
+        await self.crawl_faqs(asession, part_urls, dates, faqs_id_date)
         pages = r.html.xpath('//div[@class="page_num"]/span/a/text()')
         if pages and pages[-1] == "»":
             await self.get_card_faq_page(asession, card_id, page + 1, faqs_id_date)
@@ -273,7 +275,4 @@ class CardDBSpider:
         card_urls = r.html.xpath('//*[@id="question_text"]/a/@href')
         cards_id = set(int(card_url.split("cid=")[1]) for card_url in card_urls if "cid=" in card_url)
 
-        try:
-            await save_or_update_faq(cards_id, faq_id, title, question, answer, tags, date)
-        except Exception:
-            logger.exception(f"faq id: {faq_id}, title: {title}, cards id: {cards_id} save fail: {traceback.format_exc()}")
+        self.faq_datas.append((cards_id, faq_id, title, question, answer, tags, date))
